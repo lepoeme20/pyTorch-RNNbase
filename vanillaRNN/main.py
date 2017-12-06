@@ -49,7 +49,7 @@ parser.add_argument('-class-num', type=int, default=2, help='class_num')
 parser.add_argument('-iter', type=int, default=0, help='For checking iteration')
 parser.add_argument('-save-dir', type=str, default='./RUNS/', help='Data size')
 parser.add_argument('-final-model-dir', type=str, default='./Final_model/', help='Dir to saving learned model')
-parser.add_argument('-snapshot', type=str, default='./RUNS/Final_model/', help='dir learned model')
+parser.add_argument('-snapshot', type=str, default='./Final_model/', help='dir learned model')
 parser.add_argument('-model-name', type=str, default='LSTM_word', help='Model name')
 parser.add_argument('-data-name', type=str, default='Clothing_Shoes_and_Jewelry_5', help='Data name')
 
@@ -282,7 +282,6 @@ def dev(_model):
 
 
 def test(path):
-    # cnn = torch.load('./RUNS/2017-12-04_03-43-01/snapshot_steps4000.pt')
     cnn = torch.load(args.snapshot)
     cnn.cuda()
     print("Test started")
@@ -293,7 +292,7 @@ def test(path):
     AUROC_list, BCR_list = [], []
 
     print("")
-    for data, target, seq in dev_loader:
+    for data, target, seq in test_loader:
         data, target, seq = data_helpers.sorting_sequence(data, target, seq, args)
         data, target = Variable(data, volatile=True).cuda(), Variable(target).cuda()
 
@@ -372,10 +371,6 @@ def test(path):
 if __name__ == "__main__":
     for epoch in range(1,100):
         train(epoch)
-
-        # if epoch % 30 == 0:
-            # args.lr = args.lr * (0.1 ** (epoch // 30))
-            # print('LR is set to {}'.format(args.lr))
 
     print("training is over")
     if not os.path.isdir(args.final_model_dir): os.makedirs(args.final_model_dir)
