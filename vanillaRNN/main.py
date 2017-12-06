@@ -6,7 +6,6 @@ import torch
 import argparse
 import datetime
 import numpy as np
-import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 from vanillaRNN import data_helpers
