@@ -23,7 +23,7 @@ parser.add_argument('-which-rnn', type=str, default='LSTM',
 parser.add_argument('-bidirectional', type=bool, default=True, help='setting bidirectional')
 
 # Train or Test
-parser.add_argument('-train', type=str, default='Train', help='Trainnig or Testing')
+parser.add_argument('-train', type=bool, default=True, help='Trainnig or Testing')
 
 # Model Hyperparameters
 parser.add_argument('-lr', type=float, default=1e-2, help='setting learning rate')
