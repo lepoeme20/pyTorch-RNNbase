@@ -6,7 +6,6 @@ import torch
 import argparse
 import datetime
 import numpy as np
-import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 from RNN_based_models import data_helpers
@@ -14,37 +13,47 @@ from RNN_based_models.model import RNN
 from RNN_based_models.build_dataset import Databuilder
 from sklearn.metrics import confusion_matrix, auc, roc_curve
 
-parser = argparse.ArgumentParser(description='Vanilla RNN')
+parser = argparse.ArgumentParser(description='RNN-based')
+
+# RNN Cell
+parser.add_argument('-which-rnn', type=str, default='LSTM',
+                    help='select cell among [Vanilla, LSTM, GRU] to using for classification')
+
+# Bidirectional
+parser.add_argument('-bidirectional', type=bool, default=True, help='setting bidirectional')
+
+# Train or Test
+parser.add_argument('-train', type=str, default='Train', help='Trainnig or Testing')
 
 # Model Hyperparameters
 parser.add_argument('-lr', type=float, default=1e-2, help='setting learning rate')
-parser.add_argument('-lr-decay', type=list,  default=[], help='Empty list for learning rate decay')
+parser.add_argument('-lr-decay', type=list, default=[], help='Empty list for learning rate decay')
 parser.add_argument('-hidden-size', type=int, default=128, help='setting hidden size [default : 128]')
 parser.add_argument('-embed-dim', type=int, default=128, help='number of embedding dimension [default: 128]')
 parser.add_argument('-num-layers', type=int, default=2, help='setting number of layers [default : 1]')
-parser.add_argument('-percentile', type=int, default=95, help='setting percentile of sentence length')
-parser.add_argument('-train', type=str, default='Train', help='Trainig or Testing')
-
 
 # Training parameters
 parser.add_argument('-batch-size', type=int, default=512, help='batch size for training [default: 64]')
 parser.add_argument('-num-epochs', type=int, default=100, help='number of epochs for train [default: 200]')
-parser.add_argument('-dev-interval', type=int, default=1000, help='how many steps to wait before testing [default: 100]')
+parser.add_argument('-dev-interval', type=int, default=1000,
+                    help='how many steps to wait before testing [default: 100]')
 parser.add_argument('-save-interval', type=int, default=500, help='how many steps to wait before saving [default:500]')
-parser.add_argument('-log-interval',  type=int, default=1,   help='how many steps to wait before logging training status [default: 1]')
+parser.add_argument('-log-interval', type=int, default=1,
+                    help='how many steps to wait before logging training status [default: 1]')
 parser.add_argument('-static', action='store_true', default=False, help='fix the embedding')
-parser.add_argument('-list4ES', type=list,  default=[], help='Empty list for appending dev-acc')
-parser.add_argument('-corrects-index', type=list,  default=[], help='Empty list for appending dev-acc')
-
+parser.add_argument('-list4ES', type=list, default=[], help='Empty list for appending dev-acc')
+parser.add_argument('-corrects-index', type=list, default=[], help='Empty list for appending dev-acc')
 
 # Data Set
-parser.add_argument('-json-path', type=str, default="./data/amazon/Clothing_Shoes_and_Jewelry_5.json", help='Data source')
-parser.add_argument('-vocab-size', type=int, default=0 , help='Vocab size')
-parser.add_argument('-max-len', type=int, default=0 , help='max length among all of sentences')
+parser.add_argument('-json-path', type=str, default="./data/amazon/Clothing_Shoes_and_Jewelry_5.json",
+                    help='Data source')
+parser.add_argument('-vocab-size', type=int, default=0, help='Vocab size')
+parser.add_argument('-max-len', type=int, default=0, help='max length among all of sentences')
 parser.add_argument('-data-size', type=int, default=0, help='Data size')
 parser.add_argument('-num-classes', type=int, default=2, help='Number of classes')
 parser.add_argument('-trn-sample-percentage', type=float, default=.5, help='Percentage of the data to use for training')
-parser.add_argument('-dev-sample-percentage', type=float, default=.2, help='Percentage of the data to use for validation')
+parser.add_argument('-dev-sample-percentage', type=float, default=.2,
+                    help='Percentage of the data to use for validation')
 parser.add_argument('-test-sample-percentage', type=float, default=.3, help='Percentage of the data to use for testing')
 parser.add_argument('-seq-len', type=int, default=0, help='setting input size')
 parser.add_argument('-class-num', type=int, default=2, help='class_num')
@@ -56,14 +65,13 @@ parser.add_argument('-final-model-dir', type=str, default='./Final_model/', help
 parser.add_argument('-snapshot', type=str, default='./RUNS/Final_model/', help='dir learned model')
 parser.add_argument('-model-name', type=str, default='LSTM_word', help='Model name')
 parser.add_argument('-data-name', type=str, default='Clothing_Shoes_and_Jewelry_5', help='Data name')
-
 parser.add_argument('-dev-previous-auroc', type=float, default=.0, help='For saving best model')
 parser.add_argument('-dev-current-auroc', type=float, default=.0, help='For saving best model')
 
 args, unknown = parser.parse_known_args()
 
 print("Loading data...")
-x_text, y,   = data_helpers.load_json(args.json_path)
+x_text, y, = data_helpers.load_json(args.json_path)
 max_len, seq_num = data_helpers.max_len(x_text)
 
 x, vocab_dic = data_helpers.word2idx_array(x_text, max_len)
@@ -82,32 +90,28 @@ seq_num_shuffled = seq_num[shuffle_indices]
 # TODO: This is very crude, should use cross-validation
 trn_sample_index = -1 * int(args.trn_sample_percentage * float(len(y)))
 test_sample_index = -1 * int(args.test_sample_percentage * float(len(y)))
-x_train, x_dev, x_test = x_shuffled[:trn_sample_index],\
-                         x_shuffled[trn_sample_index:test_sample_index],\
+x_train, x_dev, x_test = x_shuffled[:trn_sample_index], \
+                         x_shuffled[trn_sample_index:test_sample_index], \
                          x_shuffled[test_sample_index:]
-y_train, y_dev, y_test = y_shuffled[:trn_sample_index],\
-                         y_shuffled[trn_sample_index:test_sample_index],\
+y_train, y_dev, y_test = y_shuffled[:trn_sample_index], \
+                         y_shuffled[trn_sample_index:test_sample_index], \
                          y_shuffled[test_sample_index:]
-seq_train, seq_dev, seq_test = seq_num_shuffled[:trn_sample_index],\
-                               seq_num_shuffled[trn_sample_index:test_sample_index],\
+seq_train, seq_dev, seq_test = seq_num_shuffled[:trn_sample_index], \
+                               seq_num_shuffled[trn_sample_index:test_sample_index], \
                                seq_num_shuffled[test_sample_index:]
-
-
 
 print("Vocabulary Size: {:d}".format(len(vocab_dic)))
 print("Train/Dev split: {:d}/{:d}/{:d}".format(len(y_train), len(y_dev), len(y_test)))
-
 
 # update args and print
 args.embed_num = len(vocab_dic)
 args.seq_len = int(max_len)
 args.save_dir = os.path.join(args.save_dir, datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
-args.snapshot = os.path.join(args.snapshot, '{}_{}.{}'.format(args.model_name, args.data_name,'pt'))
+args.snapshot = os.path.join(args.snapshot, '{}_{}.{}'.format(args.model_name, args.data_name, 'pt'))
 
 print("\nParameters:")
 for attr, value in sorted(args.__dict__.items()):
     print("\t{}={}".format(attr.upper(), value))
-
 
 # Make dataset
 train_dataset = Databuilder(sen=x_train,
@@ -153,7 +157,6 @@ if torch.cuda.is_available():
     print("model will use GPU")
 
 
-
 def train(epoch):
     model.train()
     optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr)
@@ -164,7 +167,7 @@ def train(epoch):
         optimizer.zero_grad()
 
         logit = model(data, seq)
-        
+
         # print(logit[0:6])
 
         loss = F.nll_loss(logit, torch.max(target, 1)[1])
@@ -191,8 +194,6 @@ def train(epoch):
 
         if args.iter % args.save_interval == 0:
             if not os.path.isdir(args.save_dir): os.makedirs(args.save_dir)
-            save_prefix = os.path.join(args.save_dir, 'snapshot')
-            save_path = '{}_steps{}.pt'.format(save_prefix, args.iter)
             torch.save(model, save_path)
 
 
@@ -391,4 +392,4 @@ if __name__ == "__main__":
     else:
         test(save_prefix)
 else:
-    print("fuck")
+    print("This py file is not a __main__")
